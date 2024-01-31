@@ -16,9 +16,8 @@ def call_model(ckpt, scale, window_size, device):
 
     return model
 
-def inference(img_path, model, window_size=8, scale=4, device="cuda"):
-    img = Image.open(img_path).convert("RGB")
-    img_tensor = torch.FloatTensor(np.array(img)/255).permute(2,0,1).unsqueeze(0)
+def inference(img_pil, model, window_size=8, scale=4, device="cuda"):
+    img_tensor = torch.FloatTensor(np.array(img_pil)/255).permute(2,0,1).unsqueeze(0)
 
     with torch.no_grad():
         _, _, h_old, w_old = img_tensor.size()
@@ -46,11 +45,12 @@ def main_call(model_path, root_dir, save_dir, device="cpu"):
     fns = glob(os.path.join(root_dir, "*"))
 
     for idx, fn in tqdm(enumerate(fns), total=len(fns)):
-        result = inference(img_path=fn, model=model, window_size=8, scale=4, device=device)
+        img_pil = Image.open(fn).convert("RGB")
+        result = inference(img_pil=img_pil, model=model, window_size=8, scale=4, device=device)
         result.save(os.path.join(save_dir, os.path.basename(fn)))
 
 if __name__ == '__main__':
-    main_call(model_path="",
-              root_dir="", 
-              save_dir="", 
+    main_call(model_path="/home/mlfavorfit/Desktop/lib_link/favorfit/kjg/0_model_weights/super_resolution/super_resolution_x4.pth",
+              root_dir="/media/mlfavorfit/sdb/cat_toy/images", 
+              save_dir="/media/mlfavorfit/sdb/cat_toy/images2", 
               device="cuda")
