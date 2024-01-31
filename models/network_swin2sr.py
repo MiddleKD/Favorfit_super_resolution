@@ -703,8 +703,10 @@ class Swin2SR(nn.Module):
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
                  use_checkpoint=False, upscale=2, img_range=1., upsampler='', resi_connection='1conv',
+                 main_device="cuda",
                  **kwargs):
         super(Swin2SR, self).__init__()
+        self.device = main_device
         num_in_ch = in_chans
         num_out_ch = in_chans
         num_feat = 64

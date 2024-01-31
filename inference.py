@@ -7,7 +7,7 @@ from models.network_swin2sr import Swin2SR as net
 def call_model(ckpt, scale, window_size, device):
     model = net(upscale=scale, in_chans=3, img_size=64, window_size=window_size,
                 img_range=1., depths=[6, 6, 6, 6, 6, 6], embed_dim=180, num_heads=[6, 6, 6, 6, 6, 6],
-                mlp_ratio=2, upsampler='nearest+conv', resi_connection='1conv')
+                mlp_ratio=2, upsampler='nearest+conv', resi_connection='1conv', main_device=device)
 
     pretrained_model = torch.load(ckpt, map_location="cpu")
     model.load_state_dict(pretrained_model, strict=True)
@@ -16,7 +16,7 @@ def call_model(ckpt, scale, window_size, device):
 
     return model
 
-def inference(img_pil, model, window_size=8, scale=4, device="cuda"):
+def inference(img_pil, model, window_size=8, scale=4):
     img_tensor = torch.FloatTensor(np.array(img_pil)/255).permute(2,0,1).unsqueeze(0)
 
     with torch.no_grad():
@@ -26,7 +26,7 @@ def inference(img_pil, model, window_size=8, scale=4, device="cuda"):
         img_tensor = torch.cat([img_tensor, torch.flip(img_tensor, [2])], 2)[:, :, :h_old + h_pad, :]
         img_tensor = torch.cat([img_tensor, torch.flip(img_tensor, [3])], 3)[:, :, :, :w_old + w_pad]
 
-        output = model(img_tensor.to(device))
+        output = model(img_tensor.to(model.device))
     
     output = output[..., :h_old * scale, :w_old * scale]
     output = output.squeeze(0).to("cpu").clamp_(0,1)
@@ -46,7 +46,7 @@ def main_call(model_path, root_dir, save_dir, device="cpu"):
 
     for idx, fn in tqdm(enumerate(fns), total=len(fns)):
         img_pil = Image.open(fn).convert("RGB")
-        result = inference(img_pil=img_pil, model=model, window_size=8, scale=4, device=device)
+        result = inference(img_pil=img_pil, model=model, window_size=8, scale=4)
         result.save(os.path.join(save_dir, os.path.basename(fn)))
 
 if __name__ == '__main__':
