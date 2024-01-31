@@ -1,9 +1,6 @@
 from PIL import Image
-
 import numpy as np
 import torch
-# import argparse
-
 from models.network_swin2sr import Swin2SR as net
 
 
@@ -19,7 +16,9 @@ def call_model(ckpt, scale, window_size, device):
 
     return model
 
-def inference(img_tensor, model, window_size, scale, device):
+def inference(img_path, model, window_size=8, scale=4, device="cuda"):
+    img = Image.open(img_path).convert("RGB")
+    img_tensor = torch.FloatTensor(np.array(img)/255).permute(2,0,1).unsqueeze(0)
 
     with torch.no_grad():
         _, _, h_old, w_old = img_tensor.size()
@@ -32,51 +31,26 @@ def inference(img_tensor, model, window_size, scale, device):
     
     output = output[..., :h_old * scale, :w_old * scale]
     output = output.squeeze(0).to("cpu").clamp_(0,1)
+    output = output * 255
 
-    return output
+    return Image.fromarray(output.numpy().transpose(1,2,0).astype(np.uint8))
 
-from glob import glob
-import os
-from tqdm import tqdm
-def main_call(device="cpu"):
-    model = call_model(ckpt="./ckpt/swin2sr_real.pth", scale=4, window_size=8, device=device)
+
+def main_call(model_path, root_dir, save_dir, device="cpu"):
+    import os
+    from glob import glob
+    from tqdm import tqdm
+
+    model = call_model(ckpt=model_path, scale=4, window_size=8, device=device)
     
-    fn_root_path = "/media/mlfavorfit/sdb/generated_templates/generated_template_1check/high_resolution/**/"
-    fns = glob(fn_root_path + "*.jpg", recursive=True)
+    fns = glob(os.path.join(root_dir, "*"))
 
     for idx, fn in tqdm(enumerate(fns), total=len(fns)):
-        if "original.jpg" in fn : continue
-        img = Image.open(fn).convert("RGB")
-
-        img_tensor = torch.FloatTensor(np.array(img)/255).permute(2,0,1).unsqueeze(0)
-
-        result = inference(img_tensor=img_tensor, model=model, window_size=8, \
-                        scale=4, device=device) * 255
-        new_img = Image.fromarray(result.numpy().transpose(1,2,0).astype(np.uint8))
-
-        new_img.save(os.path.join(fn))
-        if idx == 0:
-            print(fn)
-
+        result = inference(img_path=fn, model=model, window_size=8, scale=4, device=device)
+        result.save(os.path.join(save_dir, os.path.basename(fn)))
 
 if __name__ == '__main__':
-
-    main_call("cuda")
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--device', type=str, default="cpu", help="device cpu or cuda")
-    # parser.add_argument('--image_path', type=str, default="./data/milk_of_banana.png", help="path of image")
-    # parser.add_argument('--ckpt', type=str, default="./ckpt/swin2sr_real.pth", help="path of pretrained model")
-    # parser.add_argument('--save_path', type=str, default="./data/temp.jpg", help="save result path")
-    # parser.add_argument('--window_size', type=int, default=8, help="window size for padding")
-    # parser.add_argument('--scale', type=int, default=4, help="scale rate")
-    # args = parser.parse_args()
-
-    # model = call_model(ckpt=args.ckpt, scale=args.scale, window_size=args.window_size, device=args.device)
-    
-    # img = Image.open(args.image_path).convert("RGB")
-    # img_tensor = torch.FloatTensor(np.array(img)/255).permute(2,0,1).unsqueeze(0)
-    # result = inference(img_tensor=img_tensor, model=model, window_size=args.window_size, \
-    #                    scale=args.scale, device=args.device) * 255
-
-    # new_img = Image.fromarray(result.numpy().transpose(1,2,0).astype(np.uint8))
-    # new_img.save(args.save_path)
+    main_call(model_path="",
+              root_dir="", 
+              save_dir="", 
+              device="cuda")
