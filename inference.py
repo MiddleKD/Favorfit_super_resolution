@@ -4,12 +4,12 @@ import torch
 from models.network_swin2sr import Swin2SR as net
 
 
-def call_model(ckpt, scale, window_size, device):
+def call_model(model_path, scale=4, window_size=8, device="cpu"):
     model = net(upscale=scale, in_chans=3, img_size=64, window_size=window_size,
                 img_range=1., depths=[6, 6, 6, 6, 6, 6], embed_dim=180, num_heads=[6, 6, 6, 6, 6, 6],
                 mlp_ratio=2, upsampler='nearest+conv', resi_connection='1conv', main_device=device)
 
-    pretrained_model = torch.load(ckpt, map_location="cpu")
+    pretrained_model = torch.load(model_path, map_location="cpu")
     model.load_state_dict(pretrained_model, strict=True)
     model.eval()
     model = model.to(device)
@@ -40,17 +40,43 @@ def main_call(model_path, root_dir, save_dir, device="cpu"):
     from glob import glob
     from tqdm import tqdm
 
-    model = call_model(ckpt=model_path, scale=4, window_size=8, device=device)
+    model = call_model(model_path=model_path, scale=4, window_size=8, device=device)
     
-    fns = glob(os.path.join(root_dir, "*"))
+    fns = sorted(glob(os.path.join(root_dir, "*")))
 
     for idx, fn in tqdm(enumerate(fns), total=len(fns)):
         img_pil = Image.open(fn).convert("RGB")
         result = inference(img_pil=img_pil, model=model, window_size=8, scale=4)
         result.save(os.path.join(save_dir, os.path.basename(fn)))
 
+"""Thie code snipet is for multi threads inference"""
+# save_dir = "/media/mlfavorfit/sdb/palette_and_images/image_super"
+# model = call_model(model_path="/home/mlfavorfit/Desktop/lib_link/favorfit/kjg/0_model_weights/super_resolution/super_resolution_x4.pth", scale=4, window_size=8, device="cuda")
+
+# import os
+# from glob import glob
+# from tqdm import tqdm
+
+# def process_caption(fn):
+#     img_pil = Image.open(fn).convert("RGB")
+#     result = inference(img_pil=img_pil, model=model, window_size=8, scale=4)
+#     result.save(os.path.join(save_dir, os.path.basename(fn)))
+
+# fns = sorted(glob(os.path.join("/media/mlfavorfit/sdb/palette_and_images/Image", "*")))[1500:]
+# # Number of workers (adjust as needed)
+# num_workers = 4
+
+# from concurrent.futures import ThreadPoolExecutor
+# # Using ThreadPoolExecutor for parallel processing
+# with ThreadPoolExecutor(max_workers=num_workers) as executor:
+#     # Using tqdm for progress bar
+#     for _ in tqdm(executor.map(process_caption, fns), total=len(fns)):
+#         pass
+
+
+
 if __name__ == '__main__':
     main_call(model_path="/home/mlfavorfit/Desktop/lib_link/favorfit/kjg/0_model_weights/super_resolution/super_resolution_x4.pth",
               root_dir="/media/mlfavorfit/sdb/cat_toy/images", 
-              save_dir="/media/mlfavorfit/sdb/cat_toy/images2", 
+              save_dir="/media/mlfavorfit/sdb/cat_toy/temp", 
               device="cuda")
