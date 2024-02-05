@@ -16,10 +16,8 @@ def call_model(model_path, scale=4, window_size=8, device="cpu"):
 
     return model
 
-def inference(img_pil, model, window_size=8, scale=4, idle_device="cpu", device="cuda"):
+def inference(img_pil, model, window_size=8, scale=4):
     img_tensor = torch.FloatTensor(np.array(img_pil)/255).permute(2,0,1).unsqueeze(0)
-    
-    model = model.to(device)
     
     with torch.no_grad():
         _, _, h_old, w_old = img_tensor.size()
@@ -33,8 +31,6 @@ def inference(img_pil, model, window_size=8, scale=4, idle_device="cpu", device=
     output = output[..., :h_old * scale, :w_old * scale]
     output = output.squeeze(0).to("cpu").clamp_(0,1)
     output = output * 255
-    
-    model = model.to(idle_device)
 
     return Image.fromarray(output.numpy().transpose(1,2,0).astype(np.uint8))
 
