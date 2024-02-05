@@ -16,9 +16,11 @@ def call_model(model_path, scale=4, window_size=8, device="cpu"):
 
     return model
 
-def inference(img_pil, model, window_size=8, scale=4):
+def inference(img_pil, model, window_size=8, scale=4, idle_device="cpu", device="cuda"):
     img_tensor = torch.FloatTensor(np.array(img_pil)/255).permute(2,0,1).unsqueeze(0)
-
+    
+    model = model.to(device)
+    
     with torch.no_grad():
         _, _, h_old, w_old = img_tensor.size()
         h_pad = (h_old // window_size + 1) * window_size - h_old
@@ -31,6 +33,8 @@ def inference(img_pil, model, window_size=8, scale=4):
     output = output[..., :h_old * scale, :w_old * scale]
     output = output.squeeze(0).to("cpu").clamp_(0,1)
     output = output * 255
+    
+    model = model.to(idle_device)
 
     return Image.fromarray(output.numpy().transpose(1,2,0).astype(np.uint8))
 
@@ -49,7 +53,7 @@ def main_call(model_path, root_dir, save_dir, device="cpu"):
         result = inference(img_pil=img_pil, model=model, window_size=8, scale=4)
         result.save(os.path.join(save_dir, os.path.basename(fn)))
 
-"""Thie code snipet is for multi threads inference"""
+# """Thie code snipet is for multi threads inference"""
 # save_dir = "/media/mlfavorfit/sdb/palette_and_images/image_super"
 # model = call_model(model_path="/home/mlfavorfit/Desktop/lib_link/favorfit/kjg/0_model_weights/super_resolution/super_resolution_x4.pth", scale=4, window_size=8, device="cuda")
 
@@ -62,7 +66,7 @@ def main_call(model_path, root_dir, save_dir, device="cpu"):
 #     result = inference(img_pil=img_pil, model=model, window_size=8, scale=4)
 #     result.save(os.path.join(save_dir, os.path.basename(fn)))
 
-# fns = sorted(glob(os.path.join("/media/mlfavorfit/sdb/palette_and_images/Image", "*")))[1500:]
+# fns = sorted(glob(os.path.join("/media/mlfavorfit/sdb/palette_and_images/Image", "*")))
 # # Number of workers (adjust as needed)
 # num_workers = 4
 
